@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 export function useWebSocket() {
   const isConnected = ref(false)
   const role = ref('')
+  const connectionNote = ref('')
   let ws = null
   let reconnectTimer = null
   let reconnectAttempts = 0
@@ -18,14 +19,22 @@ export function useWebSocket() {
   function getWsUrl() {
     const host = window.location.hostname
     const isLocal = host === 'localhost' || host === '127.0.0.1'
-    if (isLocal) {
-      return 'ws://localhost:3000'
+    const isSecure = window.location.protocol === 'https:'
+    if (isSecure && !isLocal) {
+      return null
     }
-    return 'wss://teleprompter-sync.kuro5149330.workers.dev/ws'
+    return `ws://${host}:3000`
   }
 
   function connect() {
     const url = getWsUrl()
+    if (!url) {
+      connectionNote.value = '多设备同步：电脑执行 node server.js，iPad 访问 http://局域网IP:3000'
+      isConnected.value = false
+      role.value = ''
+      return
+    }
+    connectionNote.value = ''
 
     if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
       return
@@ -134,6 +143,7 @@ export function useWebSocket() {
   return {
     isConnected,
     role,
+    connectionNote,
     sendSync,
     sendPlay,
     claimMaster,

@@ -11,6 +11,7 @@
     </div>
 
     <div class="panel-body">
+      <div v-if="connectionNote" class="sync-note">{{ connectionNote }}</div>
       <div class="control-group">
         <label class="control-label">提词文本</label>
         <textarea
@@ -118,6 +119,7 @@ defineProps({
   greenText: { type: Boolean, default: false },
   isConnected: { type: Boolean, default: false },
   isMaster: { type: Boolean, default: true },
+  connectionNote: { type: String, default: '' },
   highlightStyle: { type: String, default: 'green' }
 })
 
@@ -321,6 +323,17 @@ defineEmits(['update:text', 'update:fontSize', 'update:speed', 'update:isMirrore
 
 .btn-claim:hover {
   background: rgba(74, 158, 255, 0.1);
+}
+
+.sync-note {
+  padding: 10px 14px;
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.25);
+  border-radius: 8px;
+  color: #eab308;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 8px;
 }
 
 .style-selector {
