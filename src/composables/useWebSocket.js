@@ -1,8 +1,32 @@
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+
+function generateRoomCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  let code = ''
+  for (let i = 0; i < 6; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)]
+  }
+  return code
+}
+
+function getRoomCode() {
+  if (typeof window === 'undefined') return ''
+  const params = new URLSearchParams(window.location.search)
+  let code = params.get('room')
+  if (!code) {
+    code = generateRoomCode()
+    params.set('room', code)
+    const url = new URL(window.location.href)
+    url.search = params.toString()
+    history.replaceState(null, '', url.toString())
+  }
+  return code
+}
 
 export function useWebSocket() {
   const isConnected = ref(false)
   const role = ref('')
+  const roomCode = ref('')
   let ws = null
   let reconnectTimer = null
   let reconnectAttempts = 0
@@ -15,14 +39,21 @@ export function useWebSocket() {
     syncRequest: null
   }
 
+  const slaveUrl = computed(() => {
+    if (!roomCode.value) return ''
+    if (role.value !== 'master') return ''
+    const url = new URL(window.location.href)
+    url.searchParams.set('room', roomCode.value)
+    return url.toString()
+  })
+
   function getWsUrl() {
     const host = window.location.hostname
     const isLocal = host === 'localhost' || host === '127.0.0.1'
-    if (isLocal) {
-      return 'ws://localhost:3000'
-    }
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    return `${protocol}//${window.location.host}`
+    const base = isLocal
+      ? 'ws://localhost:3000'
+      : (window.location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + window.location.host
+    return `${base}?room=${roomCode.value}`
   }
 
   function connect() {
@@ -125,6 +156,7 @@ export function useWebSocket() {
   }
 
   onMounted(() => {
+    roomCode.value = getRoomCode()
     connect()
   })
 
@@ -135,6 +167,8 @@ export function useWebSocket() {
   return {
     isConnected,
     role,
+    roomCode,
+    slaveUrl,
     sendSync,
     sendPlay,
     claimMaster,

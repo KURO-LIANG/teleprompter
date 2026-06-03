@@ -13,6 +13,8 @@
         :greenText="greenText"
         :isConnected="ws.isConnected.value"
         :isMaster="ws.role.value === 'master'"
+        :roomCode="ws.roomCode.value"
+        :slaveUrl="ws.slaveUrl.value"
         :highlightStyle="highlightStyle"
         @update:text="onTextChange"
         @update:fontSize="fontSize = $event"

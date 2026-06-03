@@ -10,8 +10,7 @@ const isDev = process.argv.includes('--dev')
 const PORT = 3000
 const DIST_DIR = path.join(__dirname, 'dist')
 
-let masterClient = null
-const clients = new Set()
+const rooms = new Map()
 
 function getLocalIP() {
   const interfaces = Object.values(os.networkInterfaces()).flat()
@@ -19,6 +18,43 @@ function getLocalIP() {
     (iface) => iface.family === 'IPv4' && !iface.internal
   )
   return ip ? ip.address : 'localhost'
+}
+
+function getOrCreateRoom(code) {
+  let room = rooms.get(code)
+  if (!room) {
+    room = {
+      code,
+      master: null,
+      clients: new Set()
+    }
+    rooms.set(code, room)
+  }
+  return room
+}
+
+function roomBroadcast(room, msg, exclude) {
+  const data = JSON.stringify(msg)
+  for (const client of room.clients) {
+    if (client !== exclude && client.readyState === 1) {
+      client.send(data)
+    }
+  }
+}
+
+function sendTo(client, msg) {
+  if (client && client.readyState === 1) {
+    client.send(JSON.stringify(msg))
+  }
+}
+
+function parseRoomCode(req) {
+  try {
+    const url = new URL(req.url, 'http://localhost')
+    return url.searchParams.get('room') || 'default'
+  } catch {
+    return 'default'
+  }
 }
 
 const MIME = {
@@ -32,7 +68,8 @@ const MIME = {
 }
 
 function serveStatic(req, res) {
-  let filePath = path.join(DIST_DIR, req.url === '/' ? '/index.html' : req.url)
+  const parsed = new URL(req.url, 'http://localhost')
+  let filePath = path.join(DIST_DIR, parsed.pathname === '/' ? '/index.html' : parsed.pathname)
   const ext = path.extname(filePath)
 
   if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
@@ -49,21 +86,6 @@ function serveStatic(req, res) {
   return false
 }
 
-function broadcast(msg, exclude) {
-  const data = JSON.stringify(msg)
-  for (const client of clients) {
-    if (client !== exclude && client.readyState === 1) {
-      client.send(data)
-    }
-  }
-}
-
-function sendTo(client, msg) {
-  if (client && client.readyState === 1) {
-    client.send(JSON.stringify(msg))
-  }
-}
-
 const server = http.createServer((req, res) => {
   if (isDev) {
     res.writeHead(200, { 'Content-Type': 'text/plain' })
@@ -78,19 +100,22 @@ const server = http.createServer((req, res) => {
 
 const wss = new WebSocketServer({ server })
 
-wss.on('connection', (ws) => {
-  clients.add(ws)
+wss.on('connection', (ws, req) => {
+  const roomCode = parseRoomCode(req)
+  const room = getOrCreateRoom(roomCode)
 
-  const isFirstClient = clients.size === 1 && !masterClient
+  room.clients.add(ws)
+
+  const isFirstClient = room.clients.size === 1 && !room.master
   if (isFirstClient) {
-    masterClient = ws
+    room.master = ws
     sendTo(ws, { type: 'role', role: 'master' })
   } else {
     sendTo(ws, { type: 'role', role: 'slave' })
-    if (masterClient && masterClient.readyState === 1) {
-      sendTo(masterClient, {
+    if (room.master && room.master.readyState === 1) {
+      sendTo(room.master, {
         type: 'syncRequest',
-        message: 'New slave connected, please sync state'
+        message: 'New slave connected'
       })
     }
   }
@@ -101,32 +126,32 @@ wss.on('connection', (ws) => {
 
       switch (msg.type) {
         case 'claimMaster':
-          if (!masterClient || masterClient.readyState !== 1) {
-            masterClient = ws
+          if (!room.master || room.master.readyState !== 1) {
+            room.master = ws
             sendTo(ws, { type: 'role', role: 'master' })
-            broadcast({ type: 'masterChanged' }, ws)
+            roomBroadcast(room, { type: 'masterChanged' }, ws)
           } else {
             sendTo(ws, { type: 'role', role: 'slave' })
           }
           break
 
         case 'sync':
-          if (ws === masterClient) {
-            broadcast({ type: 'sync', data: msg.data }, ws)
+          if (ws === room.master) {
+            roomBroadcast(room, { type: 'sync', data: msg.data }, ws)
           }
           break
 
         case 'play':
-          if (ws === masterClient) {
-            broadcast({ type: 'play', isPlaying: msg.isPlaying }, ws)
+          if (ws === room.master) {
+            roomBroadcast(room, { type: 'play', isPlaying: msg.isPlaying }, ws)
           }
           break
 
         case 'requestState':
-          if (masterClient && masterClient.readyState === 1) {
-            sendTo(masterClient, {
+          if (room.master && room.master.readyState === 1) {
+            sendTo(room.master, {
               type: 'syncRequest',
-              message: 'New client requesting state'
+              message: 'Client requesting state'
             })
           }
           break
@@ -137,10 +162,13 @@ wss.on('connection', (ws) => {
   })
 
   ws.on('close', () => {
-    clients.delete(ws)
-    if (ws === masterClient) {
-      masterClient = null
-      broadcast({ type: 'masterDisconnected' })
+    room.clients.delete(ws)
+    if (ws === room.master) {
+      room.master = null
+      roomBroadcast(room, { type: 'masterDisconnected' })
+    }
+    if (room.clients.size === 0) {
+      rooms.delete(roomCode)
     }
   })
 })

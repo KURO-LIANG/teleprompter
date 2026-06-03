@@ -88,6 +88,13 @@
         </div>
       </div>
 
+      <div v-if="isConnected && isMaster && slaveUrl" class="room-info">
+        <label class="control-label">房间码</label>
+        <div class="room-code">{{ roomCode }}</div>
+        <label class="control-label" style="margin-top:6px">从显端访问地址</label>
+        <div class="room-url">{{ slaveUrl }}</div>
+      </div>
+
       <div class="control-actions">
         <button
           class="btn btn-start"
@@ -118,6 +125,8 @@ defineProps({
   greenText: { type: Boolean, default: false },
   isConnected: { type: Boolean, default: false },
   isMaster: { type: Boolean, default: true },
+  roomCode: { type: String, default: '' },
+  slaveUrl: { type: String, default: '' },
   highlightStyle: { type: String, default: 'green' }
 })
 
@@ -321,6 +330,30 @@ defineEmits(['update:text', 'update:fontSize', 'update:speed', 'update:isMirrore
 
 .btn-claim:hover {
   background: rgba(74, 158, 255, 0.1);
+}
+
+.room-info {
+  padding: 12px 14px;
+  background: rgba(74, 158, 255, 0.06);
+  border: 1px solid rgba(74, 158, 255, 0.2);
+  border-radius: 8px;
+  margin-bottom: 4px;
+}
+
+.room-code {
+  font-size: 20px;
+  font-weight: 700;
+  color: #4a9eff;
+  letter-spacing: 0.1em;
+  font-variant-numeric: tabular-nums;
+  margin-top: 4px;
+}
+
+.room-url {
+  font-size: 12px;
+  color: #999;
+  word-break: break-all;
+  margin-top: 4px;
 }
 
 .style-selector {
