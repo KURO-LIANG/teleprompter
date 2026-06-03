@@ -53,7 +53,8 @@ export function useWebSocket() {
     const base = isLocal
       ? 'ws://localhost:3000'
       : (window.location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + window.location.host
-    return `${base}?room=${roomCode.value}`
+    const device = window.innerWidth < 768 ? 'mobile' : 'desktop'
+    return `${base}?room=${roomCode.value}&device=${device}`
   }
 
   function connect() {

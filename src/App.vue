@@ -1,11 +1,7 @@
 <template>
   <div class="app-root" :class="{ 'mode-prompting': mode === 'prompting' }">
-    <div v-show="mode === 'edit' || isDesktop" class="sidebar" :class="{ collapsed: sidebarCollapsed }">
-      <button class="sidebar-toggle" @click="sidebarCollapsed = !sidebarCollapsed">
-        {{ sidebarCollapsed ? '☰' : '✕' }}
-      </button>
+    <div v-show="mode === 'edit' || isDesktop" class="sidebar">
       <ControlPanel
-        v-show="!sidebarCollapsed"
         :text="text"
         :fontSize="fontSize"
         :speed="speed"
@@ -68,7 +64,6 @@ const isPlaying = ref(false)
 const isMirrored = ref(false)
 const greenText = ref(false)
 const mode = ref('edit')
-const sidebarCollapsed = ref(false)
 const countdown = ref(0)
 const highlightStyle = ref('green')
 const displayRef = ref(null)
@@ -173,7 +168,6 @@ watch(isPlaying, (val) => {
 
 async function startPrompting() {
   mode.value = 'prompting'
-  sidebarCollapsed.value = true
   isPlaying.value = false
 
   nextTick(() => {
@@ -205,7 +199,6 @@ function stopPrompting() {
   isPlaying.value = false
   exitFullscreen()
   mode.value = 'edit'
-  sidebarCollapsed.value = false
 }
 
 function enterFullscreen() {
@@ -281,26 +274,6 @@ html, body, #app {
   transition: width 0.3s ease;
 }
 
-.sidebar.collapsed {
-  width: 44px;
-}
-
-.sidebar-toggle {
-  display: none;
-  position: absolute;
-  top: 12px;
-  right: 8px;
-  z-index: 20;
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: #2a2a2a;
-  color: #ccc;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-}
-
 .main-area {
   flex: 1;
   height: 100%;
@@ -357,15 +330,6 @@ html, body, #app {
     height: auto;
     max-height: 50vh;
     flex-shrink: 0;
-  }
-
-  .sidebar.collapsed {
-    height: 48px;
-    max-height: 48px;
-  }
-
-  .sidebar-toggle {
-    display: block;
   }
 
   .main-area {

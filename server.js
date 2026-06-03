@@ -26,6 +26,7 @@ function getOrCreateRoom(code) {
     room = {
       code,
       master: null,
+      masterDevice: null,
       clients: new Set()
     }
     rooms.set(code, room)
@@ -54,6 +55,15 @@ function parseRoomCode(req) {
     return url.searchParams.get('room') || 'default'
   } catch {
     return 'default'
+  }
+}
+
+function parseDevice(req) {
+  try {
+    const url = new URL(req.url, 'http://localhost')
+    return url.searchParams.get('device') || 'desktop'
+  } catch {
+    return 'desktop'
   }
 }
 
@@ -102,13 +112,22 @@ const wss = new WebSocketServer({ server })
 
 wss.on('connection', (ws, req) => {
   const roomCode = parseRoomCode(req)
+  const device = parseDevice(req)
   const room = getOrCreateRoom(roomCode)
 
   room.clients.add(ws)
 
   const isFirstClient = room.clients.size === 1 && !room.master
-  if (isFirstClient) {
+  const currentMasterIsMobile = room.master && room.masterDevice === 'mobile'
+  const shouldBeMaster = isFirstClient || (currentMasterIsMobile && device === 'desktop')
+
+  if (shouldBeMaster) {
+    if (currentMasterIsMobile && device === 'desktop') {
+      room.masterDevice = 'desktop'
+      sendTo(room.master, { type: 'role', role: 'slave' })
+    }
     room.master = ws
+    room.masterDevice = device
     sendTo(ws, { type: 'role', role: 'master' })
   } else {
     sendTo(ws, { type: 'role', role: 'slave' })
@@ -165,6 +184,7 @@ wss.on('connection', (ws, req) => {
     room.clients.delete(ws)
     if (ws === room.master) {
       room.master = null
+      room.masterDevice = null
       roomBroadcast(room, { type: 'masterDisconnected' })
     }
     if (room.clients.size === 0) {
