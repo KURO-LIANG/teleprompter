@@ -13,7 +13,6 @@
         :greenText="greenText"
         :isConnected="ws.isConnected.value"
         :isMaster="ws.role.value === 'master'"
-        :connectionNote="ws.connectionNote.value"
         :highlightStyle="highlightStyle"
         @update:text="onTextChange"
         @update:fontSize="fontSize = $event"
