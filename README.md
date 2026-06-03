@@ -90,7 +90,9 @@ docker build -t teleprompter .
 docker run -d -p 3000:3000 --restart always --name teleprompter teleprompter
 ```
 
-### 配置 Nginx 反代（HTTPS + 域名）
+### 配置反向代理（HTTPS + 域名）
+
+#### Nginx
 
 ```nginx
 server {
@@ -110,6 +112,17 @@ server {
 }
 ```
 
+#### Caddy 2
+
+```caddy
+your-domain.com {
+    reverse_proxy container-name:3000
+    tls your-email@example.com
+}
+```
+
+> Caddy 2 自动处理 Let's Encrypt 证书和 WebSocket 升级，无需额外配置。
+
 ### 部署流程
 
 ```bash
@@ -122,8 +135,7 @@ cd /opt/teleprompter
 docker build -t teleprompter .
 docker run -d -p 3000:3000 --restart always --name teleprompter teleprompter
 
-# 配置 Nginx 并 reload
-nginx -t && nginx -s reload
+# 配置 Caddy / Nginx 反代并 reload
 ```
 
 ## 多设备同步
