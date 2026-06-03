@@ -12,10 +12,9 @@
         :isMirrored="isMirrored"
         :greenText="greenText"
         :isConnected="ws.isConnected.value"
+        :isSkipped="ws.isSkipped.value"
         :isMaster="ws.role.value === 'master'"
         :highlightStyle="highlightStyle"
-        :isSpeechSupported="speech.isSupported.value"
-        :isListening="speech.isListening.value"
         @update:text="onTextChange"
         @update:fontSize="fontSize = $event"
         @update:speed="speed = $event"
@@ -28,7 +27,7 @@
       />
     </div>
 
-    <div class="main-area" @click="onMainClick">
+    <div class="main-area">
       <TeleprompterDisplay
         ref="displayRef"
         :text="text"
@@ -39,16 +38,17 @@
         :greenText="greenText"
         :countdown="countdown"
         :tokens="tokens"
-        :readIndex="readIndex"
         :highlightStyle="highlightStyle"
-        @back="mode = 'edit'"
       />
 
       <div v-if="mode === 'prompting'" class="floating-controls">
-        <button class="float-btn" @click.stop="togglePlay">
-          {{ isPlaying ? '⏸' : '▶' }}
+        <button class="float-btn" @click.stop="togglePlay" :title="isPlaying ? '暂停' : '播放'">
+          <svg v-if="isPlaying" viewBox="0 0 24 24" class="btn-icon"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" fill="currentColor"/></svg>
+          <svg v-else viewBox="0 0 24 24" class="btn-icon"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
         </button>
-        <button class="float-btn" @click.stop="stopPrompting">⏹</button>
+        <button class="float-btn" @click.stop="stopPrompting" title="停止">
+          <svg viewBox="0 0 24 24" class="btn-icon"><path d="M6 6h12v12H6z" fill="currentColor"/></svg>
+        </button>
       </div>
     </div>
   </div>
@@ -59,7 +59,6 @@ import { ref, watch, nextTick, computed } from 'vue'
 import ControlPanel from './components/ControlPanel.vue'
 import TeleprompterDisplay from './components/TeleprompterDisplay.vue'
 import { useWebSocket } from './composables/useWebSocket.js'
-import { useSpeechRecognition } from './composables/useSpeechRecognition.js'
 
 const text = ref('')
 const fontSize = ref(64)
@@ -71,13 +70,11 @@ const mode = ref('edit')
 const sidebarCollapsed = ref(false)
 const countdown = ref(0)
 const highlightStyle = ref('green')
-const readIndex = ref(0)
 const displayRef = ref(null)
 let textSyncTimer = null
 let countdownTimer = null
 
 const ws = useWebSocket()
-const speech = useSpeechRecognition('zh-CN')
 
 ws.onSync((data) => {
   if (ws.role.value !== 'master') {
@@ -155,40 +152,6 @@ function tokenizeText(value) {
 
 const tokens = computed(() => tokenizeText(text.value))
 
-function alignSpeech(recognizedText) {
-  const tokensVal = tokens.value
-  if (!tokensVal.length || !recognizedText) return
-
-  const cleanSpeech = recognizedText.replace(/[^\w\u4e00-\u9fff]/g, '').toLowerCase()
-  if (!cleanSpeech) return
-
-  let idx = readIndex.value
-  const windowSize = 30
-
-  for (const char of cleanSpeech) {
-    let found = false
-    const end = Math.min(idx + windowSize, tokensVal.length)
-    for (let j = idx; j < end; j++) {
-      if (tokensVal[j].clean === char) {
-        idx = j + 1
-        found = true
-        break
-      }
-    }
-    if (!found) {
-      // scan full remaining tokens once as fallback
-      for (let j = idx; j < tokensVal.length; j++) {
-        if (tokensVal[j].clean === char) {
-          idx = j + 1
-          break
-        }
-      }
-    }
-  }
-
-  readIndex.value = Math.max(readIndex.value, idx)
-}
-
 function onTextChange(val) {
   text.value = val
   clearTimeout(textSyncTimer)
@@ -207,21 +170,10 @@ watch(isPlaying, (val) => {
   }
 })
 
-watch(() => speech.lastResult.value, (val) => {
-  if (val && mode.value === 'prompting') alignSpeech(val)
-})
-
-watch(() => speech.interimResult.value, (val) => {
-  if (val && mode.value === 'prompting') {
-    alignSpeech(speech.lastResult.value + val)
-  }
-})
-
 async function startPrompting() {
   mode.value = 'prompting'
   sidebarCollapsed.value = true
   isPlaying.value = false
-  readIndex.value = 0
 
   nextTick(() => {
     displayRef.value?.resetScroll()
@@ -232,9 +184,7 @@ async function startPrompting() {
     lockLandscape()
   }
 
-  speech.start()
-
-  countdown.value = 5
+  countdown.value = 3
   countdownTimer = setInterval(() => {
     countdown.value--
     if (countdown.value <= 0) {
@@ -251,7 +201,6 @@ function stopPrompting() {
     countdownTimer = null
   }
   countdown.value = 0
-  speech.stop()
   isPlaying.value = false
   exitFullscreen()
   mode.value = 'edit'
@@ -286,13 +235,6 @@ function exitFullscreen() {
 
 function togglePlay() {
   isPlaying.value = !isPlaying.value
-}
-
-function onMainClick() {
-  // tap the prompting area to return to edit mode
-  if (mode.value === 'prompting') {
-    mode.value = 'edit'
-  }
 }
 
 const isDesktop = computed(() => window.innerWidth >= 1024)
@@ -373,7 +315,8 @@ html, body, #app {
   transform: translateX(-50%);
   display: flex;
   gap: 12px;
-  z-index: 20;
+  z-index: 50;
+  pointer-events: auto;
 }
 
 .float-btn {
@@ -395,6 +338,11 @@ html, body, #app {
 
 .float-btn:active {
   background: rgba(74, 158, 255, 0.3);
+}
+
+.btn-icon {
+  width: 22px;
+  height: 22px;
 }
 
 /* Tablet: 768-1023px */

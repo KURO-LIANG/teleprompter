@@ -5,7 +5,7 @@
       <div class="connection-status">
         <span class="status-dot" :class="{ connected: isConnected }"></span>
         <span class="status-text">
-          {{ isConnected ? (isMaster ? '主控端' : '从显端') : '未连接' }}
+          {{ isSkipped ? '云端模式' : (isConnected ? (isMaster ? '主控端' : '从显端') : '未连接') }}
         </span>
       </div>
     </div>
@@ -64,10 +64,6 @@
           <input type="checkbox" :checked="greenText" @change="$emit('update:greenText', $event.target.checked)" />
           <span>绿色字体</span>
         </label>
-        <div v-if="isSpeechSupported" class="mic-status">
-          <span class="mic-dot" :class="{ active: isListening }"></span>
-          <span class="mic-text">{{ isListening ? '麦克风已开启' : '麦克风待命' }}</span>
-        </div>
       </div>
 
       <div class="control-group">
@@ -84,6 +80,10 @@
           <label class="style-option" :class="{ active: highlightStyle === 'dim' }">
             <input type="radio" value="dim" :checked="highlightStyle === 'dim'" @change="$emit('update:highlightStyle', 'dim')" />
             <span>暗化模式</span>
+          </label>
+          <label class="style-option" :class="{ active: highlightStyle === 'none' }">
+            <input type="radio" value="none" :checked="highlightStyle === 'none'" @change="$emit('update:highlightStyle', 'none')" />
+            <span>无</span>
           </label>
         </div>
       </div>
@@ -117,10 +117,9 @@ defineProps({
   isMirrored: { type: Boolean, default: false },
   greenText: { type: Boolean, default: false },
   isConnected: { type: Boolean, default: false },
+  isSkipped: { type: Boolean, default: false },
   isMaster: { type: Boolean, default: true },
-  highlightStyle: { type: String, default: 'green' },
-  isSpeechSupported: { type: Boolean, default: false },
-  isListening: { type: Boolean, default: false }
+  highlightStyle: { type: String, default: 'green' }
 })
 
 defineEmits(['update:text', 'update:fontSize', 'update:speed', 'update:isMirrored', 'update:greenText', 'start', 'claim', 'requestSync', 'update:highlightStyle'])
@@ -385,5 +384,15 @@ defineEmits(['update:text', 'update:fontSize', 'update:speed', 'update:isMirrore
 @keyframes mic-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
+}
+
+.speech-error {
+  padding: 10px 14px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  color: #f87171;
+  font-size: 13px;
+  line-height: 1.4;
 }
 </style>

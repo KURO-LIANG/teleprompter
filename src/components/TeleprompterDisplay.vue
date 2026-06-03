@@ -5,6 +5,11 @@
     :class="{ mirrored: isMirrored, 'green-text': greenText }"
     :style="{ fontSize: fontSize + 'px' }"
     @click="onClick"
+    @pointerdown="onPointerDown"
+    @pointermove="onPointerMove"
+    @pointerup="onPointerUp"
+    @pointerleave="onPointerUp"
+    @wheel.passive="onWheel"
   >
     <div class="teleprompter-content">
       <div class="teleprompter-text">
@@ -16,11 +21,21 @@
     </div>
     <div v-if="!isPlaying && !countdownActive" class="play-overlay">
       <div class="play-icon">&#9654;</div>
-      <div class="play-hint">点击屏幕返回编辑</div>
+      <div class="play-hint">单击暂停 · 滑动调速 · 三连击调试</div>
     </div>
     <div v-if="isPlaying" class="reading-line"></div>
     <div v-if="countdownActive" class="countdown-overlay">
       <div class="countdown-number" :key="countdown">{{ countdown }}</div>
+    </div>
+    <div v-if="debugVisible" class="debug-panel" @click.stop>
+      <div class="debug-row">
+        <span class="debug-label">滚动进度</span>
+        <span class="debug-value">{{ scrollPercent }}%</span>
+      </div>
+      <div class="debug-row">
+        <span class="debug-label">已读 / 总字</span>
+        <span class="debug-value">{{ scrollReadIndex }} / {{ tokens.length }}</span>
+      </div>
     </div>
   </div>
 </template>
@@ -41,34 +56,102 @@ const props = defineProps({
   highlightStyle: { type: String, default: 'green' }
 })
 
-const emit = defineEmits(['back'])
+const emit = defineEmits([])
 
 const containerRef = ref(null)
 let animationId = null
 
 const countdownActive = computed(() => props.countdown > 0)
+const debugVisible = ref(false)
+const scrollReadIndex = ref(0)
+const scrollPercent = ref(0)
+const isUserInteracting = ref(false)
+let clickCount = 0
+let clickTimer = null
+let lastReadCheck = 0
+let interactionTimer = null
+let isDragging = false
+let dragStartY = 0
+let dragStartScroll = 0
+
+const effectiveReadIndex = computed(() => {
+  return Math.max(scrollReadIndex.value, props.readIndex || 0)
+})
 
 function onClick() {
-  if (!countdownActive.value) {
-    emit('back')
+  if (countdownActive.value) return
+
+  clickCount++
+  if (clickCount >= 3) {
+    clickCount = 0
+    debugVisible.value = !debugVisible.value
+  } else {
+    clearTimeout(clickTimer)
+    clickTimer = setTimeout(() => { clickCount = 0 }, 500)
   }
 }
 
+function onPointerDown(e) {
+  isUserInteracting.value = true
+  if (e.pointerType === 'mouse' && containerRef.value) {
+    dragStartY = e.clientY
+    dragStartScroll = containerRef.value.scrollTop
+    isDragging = true
+    containerRef.value.setPointerCapture(e.pointerId)
+  }
+}
+
+function onPointerMove(e) {
+  if (!isDragging) return
+  const delta = dragStartY - e.clientY
+  containerRef.value.scrollTop = dragStartScroll + delta
+}
+
+function onPointerUp() {
+  isUserInteracting.value = false
+  isDragging = false
+}
+
+function onWheel() {
+  isUserInteracting.value = true
+  clearTimeout(interactionTimer)
+  interactionTimer = setTimeout(() => {
+    isUserInteracting.value = false
+  }, 200)
+}
+
 function tokenClass(i) {
-  if (!props.readIndex) return 'word-unread'
-  if (i < props.readIndex) return `word-read style-${props.highlightStyle}`
-  if (i === props.readIndex) return 'word-current'
+  if (props.highlightStyle === 'none') return ''
+  const idx = effectiveReadIndex.value
+  if (!idx) return 'word-unread'
+  if (i < idx) return `word-read style-${props.highlightStyle}`
+  if (i === idx) return 'word-current'
   return 'word-unread'
 }
 
-function animate() {
+function updateScrollReadIndex() {
+  if (!containerRef.value) return
+  const el = containerRef.value
+  const maxScroll = el.scrollHeight - el.clientHeight
+  if (maxScroll <= 0) return
+  const pct = Math.min(el.scrollTop / maxScroll, 1)
+  scrollPercent.value = Math.round(pct * 100)
+  scrollReadIndex.value = Math.floor(pct * props.tokens.length)
+}
+
+function animate(timestamp) {
   if (!containerRef.value) {
     animationId = requestAnimationFrame(animate)
     return
   }
 
-  if (props.isPlaying) {
+  if (props.isPlaying && !isUserInteracting.value) {
     containerRef.value.scrollTop += props.speed * 0.1
+  }
+
+  if (timestamp - lastReadCheck > 250) {
+    updateScrollReadIndex()
+    lastReadCheck = timestamp
   }
 
   animationId = requestAnimationFrame(animate)
@@ -89,6 +172,8 @@ function stopAnimation() {
 function resetScroll() {
   if (containerRef.value) {
     containerRef.value.scrollTop = 0
+    scrollReadIndex.value = 0
+    scrollPercent.value = 0
   }
 }
 
@@ -104,7 +189,7 @@ onUnmounted(() => {
   stopAnimation()
 })
 
-defineExpose({ resetScroll })
+defineExpose({ resetScroll, scrollReadIndex })
 </script>
 
 <style scoped>
@@ -114,10 +199,16 @@ defineExpose({ resetScroll })
   height: 100%;
   background: #0a0a0a;
   color: #e8e8e8;
-  overflow: hidden;
+  overflow-y: scroll;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
+}
+
+.teleprompter-display::-webkit-scrollbar {
+  display: none;
 }
 
 .teleprompter-display.mirrored {
@@ -189,7 +280,7 @@ defineExpose({ resetScroll })
 }
 
 .countdown-number {
-  font-size: 120px;
+  font-size: 60vh;
   font-weight: 700;
   color: #fff;
   text-shadow: 0 0 40px rgba(255, 255, 255, 0.3);
@@ -204,6 +295,7 @@ defineExpose({ resetScroll })
 .word-read.style-green { color: #4ade80; }
 .word-read.style-fade  { opacity: 0.35; }
 .word-read.style-dim   { color: #555; }
+.word-read.style-none  { color: inherit; }
 
 .word-current {
   color: #fff;
@@ -219,6 +311,48 @@ defineExpose({ resetScroll })
 .teleprompter-display.green-text .word-current {
   color: #fff;
   border-bottom-color: #fff;
+}
+
+.debug-panel {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(74, 158, 255, 0.3);
+  border-radius: 10px;
+  padding: 10px 14px;
+  z-index: 50;
+  font-size: 12px;
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.debug-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.debug-label {
+  color: #888;
+}
+
+.debug-value {
+  color: #ccc;
+  font-variant-numeric: tabular-nums;
+}
+
+.debug-value.active {
+  color: #4ade80;
+}
+
+.debug-value.error {
+  color: #f87171;
 }
 
 @media (max-width: 767px) {

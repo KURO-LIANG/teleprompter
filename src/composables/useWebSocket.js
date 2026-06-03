@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 export function useWebSocket() {
   const isConnected = ref(false)
   const role = ref('')
+  const isSkipped = ref(false)
   let ws = null
   let reconnectTimer = null
   let reconnectAttempts = 0
@@ -16,16 +17,31 @@ export function useWebSocket() {
   }
 
   function getWsUrl() {
-    return `ws://${window.location.hostname}:3000`
+    const host = window.location.hostname
+    const isLocal = host === 'localhost' || host === '127.0.0.1'
+    const isSecure = window.location.protocol === 'https:'
+    if (isSecure && !isLocal) {
+      return null
+    }
+    return `ws://${host}:3000`
   }
 
   function connect() {
+    const url = getWsUrl()
+    if (!url) {
+      isConnected.value = false
+      role.value = ''
+      isSkipped.value = true
+      return
+    }
+    isSkipped.value = false
+
     if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
       return
     }
 
     try {
-      ws = new WebSocket(getWsUrl())
+      ws = new WebSocket(url)
     } catch (e) {
       scheduleReconnect()
       return
@@ -127,6 +143,7 @@ export function useWebSocket() {
   return {
     isConnected,
     role,
+    isSkipped,
     sendSync,
     sendPlay,
     claimMaster,
