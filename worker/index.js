@@ -1,16 +1,12 @@
 export class TeleprompterRoom {
-  constructor(state, env) {
+  constructor(ctx, env) {
+    this.ctx = ctx
     this.sessions = new Map()
     this.masterId = null
     this.nextId = 0
   }
 
   async fetch(request) {
-    const upgradeHeader = request.headers.get('Upgrade')
-    if (upgradeHeader !== 'websocket') {
-      return new Response('Expected WebSocket', { status: 426 })
-    }
-
     const pair = new WebSocketPair()
     const [client, server] = Object.values(pair)
 
@@ -30,19 +26,14 @@ export class TeleprompterRoom {
     this.sessions.set(server, session)
     this.ctx.acceptWebSocket(server)
 
-    // Send role assignment
     client.send(JSON.stringify({ type: 'role', role: session.role }))
 
-    // If a new slave joined and there's a master, request state
     if (!isFirst) {
       for (const [ws, s] of this.sessions) {
         if (s.role === 'master') {
           try {
-            s.client.send(JSON.stringify({
-              type: 'syncRequest',
-              message: 'New slave connected'
-            }))
-          } catch (e) { /* ignore */ }
+            s.client.send(JSON.stringify({ type: 'syncRequest' }))
+          } catch (e) {}
         }
       }
     }
@@ -61,37 +52,31 @@ export class TeleprompterRoom {
           if (!this.masterId) {
             this.masterId = sender.id
             sender.role = 'master'
-            this.sendTo(sender.client, { type: 'role', role: 'master' })
+            sender.client.send(JSON.stringify({ type: 'role', role: 'master' }))
             this.broadcast({ type: 'masterChanged' }, ws)
           }
           break
-
         case 'sync':
           if (sender.role === 'master') {
             this.broadcast({ type: 'sync', data: data.data }, ws)
           }
           break
-
         case 'play':
           if (sender.role === 'master') {
             this.broadcast({ type: 'play', isPlaying: data.isPlaying }, ws)
           }
           break
-
         case 'requestState':
           for (const [, s] of this.sessions) {
             if (s.role === 'master') {
               try {
-                s.client.send(JSON.stringify({
-                  type: 'syncRequest',
-                  message: 'Requesting state'
-                }))
-              } catch (e) { /* ignore */ }
+                s.client.send(JSON.stringify({ type: 'syncRequest' }))
+              } catch (e) {}
             }
           }
           break
       }
-    } catch (e) { /* ignore invalid messages */ }
+    } catch (e) {}
   }
 
   webSocketClose(ws) {
@@ -113,17 +98,9 @@ export class TeleprompterRoom {
     const data = JSON.stringify(msg)
     for (const [ws, s] of this.sessions) {
       if (ws !== exclude) {
-        try {
-          s.client.send(data)
-        } catch (e) { /* ignore */ }
+        try { s.client.send(data) } catch (e) {}
       }
     }
-  }
-
-  sendTo(client, msg) {
-    try {
-      client.send(JSON.stringify(msg))
-    } catch (e) { /* ignore */ }
   }
 }
 
