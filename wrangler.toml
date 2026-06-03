@@ -1,11 +1,11 @@
-name = "teleprompter-ws"
+name = "teleprompter-sync"
 main = "worker/index.js"
 compatibility_date = "2024-01-01"
 
 [[durable_objects.bindings]]
-name = "TELEPROMPTER_ROOM"
-class_name = "TeleprompterRoom"
+name = "SYNC_ROOM"
+class_name = "SyncRoom"
 
 [[migrations]]
 tag = "v1"
-new_sqlite_classes = ["TeleprompterRoom"]
+new_sqlite_classes = ["SyncRoom"]

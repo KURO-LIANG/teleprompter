@@ -21,7 +21,7 @@ export function useWebSocket() {
     if (isLocal) {
       return 'ws://localhost:3000'
     }
-    return 'wss://teleprompter-ws.kuro5149330.workers.dev/ws'
+    return 'wss://teleprompter-sync.kuro5149330.workers.dev/ws'
   }
 
   function connect() {

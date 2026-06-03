@@ -1,4 +1,4 @@
-export class TeleprompterRoom {
+export class SyncRoom {
   constructor(ctx, env) {
     this.ctx = ctx
     this.sessions = new Map()
@@ -13,15 +13,8 @@ export class TeleprompterRoom {
     const sessionId = String(++this.nextId)
     const isFirst = this.sessions.size === 0 && !this.masterId
 
-    const session = {
-      id: sessionId,
-      role: isFirst ? 'master' : 'slave',
-      client
-    }
-
-    if (isFirst) {
-      this.masterId = sessionId
-    }
+    const session = { id: sessionId, role: isFirst ? 'master' : 'slave', client }
+    if (isFirst) this.masterId = sessionId
 
     this.sessions.set(server, session)
     this.ctx.acceptWebSocket(server)
@@ -31,9 +24,7 @@ export class TeleprompterRoom {
     if (!isFirst) {
       for (const [ws, s] of this.sessions) {
         if (s.role === 'master') {
-          try {
-            s.client.send(JSON.stringify({ type: 'syncRequest' }))
-          } catch (e) {}
+          try { s.client.send(JSON.stringify({ type: 'syncRequest' })) } catch (e) {}
         }
       }
     }
@@ -57,21 +48,15 @@ export class TeleprompterRoom {
           }
           break
         case 'sync':
-          if (sender.role === 'master') {
-            this.broadcast({ type: 'sync', data: data.data }, ws)
-          }
+          if (sender.role === 'master') this.broadcast({ type: 'sync', data: data.data }, ws)
           break
         case 'play':
-          if (sender.role === 'master') {
-            this.broadcast({ type: 'play', isPlaying: data.isPlaying }, ws)
-          }
+          if (sender.role === 'master') this.broadcast({ type: 'play', isPlaying: data.isPlaying }, ws)
           break
         case 'requestState':
           for (const [, s] of this.sessions) {
             if (s.role === 'master') {
-              try {
-                s.client.send(JSON.stringify({ type: 'syncRequest' }))
-              } catch (e) {}
+              try { s.client.send(JSON.stringify({ type: 'syncRequest' })) } catch (e) {}
             }
           }
           break
@@ -80,26 +65,19 @@ export class TeleprompterRoom {
   }
 
   webSocketClose(ws) {
-    const session = this.sessions.get(ws)
-    if (session) {
-      if (session.role === 'master') {
-        this.masterId = null
-        this.broadcast({ type: 'masterDisconnected' })
-      }
+    const s = this.sessions.get(ws)
+    if (s) {
+      if (s.role === 'master') { this.masterId = null; this.broadcast({ type: 'masterDisconnected' }) }
       this.sessions.delete(ws)
     }
   }
 
-  webSocketError(ws) {
-    this.webSocketClose(ws)
-  }
+  webSocketError(ws) { this.webSocketClose(ws) }
 
   broadcast(msg, exclude) {
     const data = JSON.stringify(msg)
     for (const [ws, s] of this.sessions) {
-      if (ws !== exclude) {
-        try { s.client.send(data) } catch (e) {}
-      }
+      if (ws !== exclude) try { s.client.send(data) } catch (e) {}
     }
   }
 }
@@ -108,9 +86,8 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url)
     if (url.pathname === '/ws') {
-      const id = env.TELEPROMPTER_ROOM.idFromName('default')
-      const stub = env.TELEPROMPTER_ROOM.get(id)
-      return stub.fetch(request)
+      const id = env.SYNC_ROOM.idFromName('default')
+      return env.SYNC_ROOM.get(id).fetch(request)
     }
     return new Response('OK', { status: 200 })
   }
