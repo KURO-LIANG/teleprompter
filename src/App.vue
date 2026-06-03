@@ -12,7 +12,6 @@
         :isMirrored="isMirrored"
         :greenText="greenText"
         :isConnected="ws.isConnected.value"
-        :isSkipped="ws.isSkipped.value"
         :isMaster="ws.role.value === 'master'"
         :highlightStyle="highlightStyle"
         @update:text="onTextChange"

@@ -3,7 +3,6 @@ import { ref, onMounted, onUnmounted } from 'vue'
 export function useWebSocket() {
   const isConnected = ref(false)
   const role = ref('')
-  const isSkipped = ref(false)
   let ws = null
   let reconnectTimer = null
   let reconnectAttempts = 0
@@ -19,22 +18,14 @@ export function useWebSocket() {
   function getWsUrl() {
     const host = window.location.hostname
     const isLocal = host === 'localhost' || host === '127.0.0.1'
-    const isSecure = window.location.protocol === 'https:'
-    if (isSecure && !isLocal) {
-      return null
+    if (isLocal) {
+      return 'ws://localhost:3000'
     }
-    return `ws://${host}:3000`
+    return 'wss://teleprompter-ws.kuro5149330.workers.dev/ws'
   }
 
   function connect() {
     const url = getWsUrl()
-    if (!url) {
-      isConnected.value = false
-      role.value = ''
-      isSkipped.value = true
-      return
-    }
-    isSkipped.value = false
 
     if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
       return
@@ -143,7 +134,6 @@ export function useWebSocket() {
   return {
     isConnected,
     role,
-    isSkipped,
     sendSync,
     sendPlay,
     claimMaster,

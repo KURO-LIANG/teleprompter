@@ -5,22 +5,12 @@
       <div class="connection-status">
         <span class="status-dot" :class="{ connected: isConnected }"></span>
         <span class="status-text">
-          {{ isSkipped ? '云端模式' : (isConnected ? (isMaster ? '主控端' : '从显端') : '未连接') }}
+          {{ isConnected ? (isMaster ? '主控端' : '从显端') : '未连接' }}
         </span>
       </div>
     </div>
 
     <div class="panel-body">
-      <div v-if="isSkipped" class="lan-notice">
-        <div class="lan-notice-title">💡 开启局域网同步</div>
-        <div class="lan-notice-text">当前为云端模式，多设备同步需通过本地服务器：</div>
-        <ol class="lan-notice-steps">
-          <li>电脑终端执行 <code>node server.js</code></li>
-          <li>电脑访问 <code>http://localhost:3000</code></li>
-          <li>iPad/手机访问 <code>http://&lt;电脑IP&gt;:3000</code></li>
-        </ol>
-        <div class="lan-notice-text">服务器启动后会显示局域网 IP 地址</div>
-      </div>
       <div class="control-group">
         <label class="control-label">提词文本</label>
         <textarea
@@ -127,7 +117,6 @@ defineProps({
   isMirrored: { type: Boolean, default: false },
   greenText: { type: Boolean, default: false },
   isConnected: { type: Boolean, default: false },
-  isSkipped: { type: Boolean, default: false },
   isMaster: { type: Boolean, default: true },
   highlightStyle: { type: String, default: 'green' }
 })
@@ -404,43 +393,5 @@ defineEmits(['update:text', 'update:fontSize', 'update:speed', 'update:isMirrore
   color: #f87171;
   font-size: 13px;
   line-height: 1.4;
-}
-
-.lan-notice {
-  padding: 14px 16px;
-  background: rgba(74, 158, 255, 0.08);
-  border: 1px solid rgba(74, 158, 255, 0.25);
-  border-radius: 10px;
-  margin-bottom: 8px;
-}
-
-.lan-notice-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #4a9eff;
-  margin-bottom: 8px;
-}
-
-.lan-notice-text {
-  font-size: 12px;
-  color: #999;
-  line-height: 1.6;
-  margin-top: 4px;
-}
-
-.lan-notice-steps {
-  margin: 8px 0 4px 0;
-  padding-left: 20px;
-  font-size: 12px;
-  color: #ccc;
-  line-height: 1.8;
-}
-
-.lan-notice-steps code {
-  background: rgba(74, 158, 255, 0.12);
-  color: #4a9eff;
-  padding: 1px 6px;
-  border-radius: 4px;
-  font-size: 12px;
 }
 </style>
