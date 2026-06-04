@@ -73,21 +73,21 @@ let interactionTimer = null
 let isDragging = false
 let dragStartY = 0
 let dragStartScroll = 0
+let debugLogTimer = 0
 
-const effectiveReadIndex = computed(() => {
-  return Math.max(scrollReadIndex.value, props.readIndex || 0)
-})
+function animate(timestamp) {
+  if (!containerRef.value) {
+    animationId = requestAnimationFrame(animate)
+    return
+  }
 
-function onClick() {
-  if (countdownActive.value) return
+  if (props.isPlaying && !isUserInteracting.value) {
+    containerRef.value.scrollTop += props.speed * 0.1
+  }
 
-  clickCount++
-  if (clickCount >= 3) {
-    clickCount = 0
-    debugVisible.value = !debugVisible.value
-  } else {
-    clearTimeout(clickTimer)
-    clickTimer = setTimeout(() => { clickCount = 0 }, 500)
+  if (timestamp - debugLogTimer > 2000) {
+    console.log('[animate] isPlaying:', props.isPlaying, 'scrollTop:', Math.round(containerRef.value.scrollTop), 'isUserInteracting:', isUserInteracting.value)
+    debugLogTimer = timestamp
   }
 }
 
@@ -139,24 +139,6 @@ function updateScrollReadIndex() {
   scrollReadIndex.value = Math.floor(pct * props.tokens.length)
 }
 
-function animate(timestamp) {
-  if (!containerRef.value) {
-    animationId = requestAnimationFrame(animate)
-    return
-  }
-
-  if (props.isPlaying && !isUserInteracting.value) {
-    containerRef.value.scrollTop += props.speed * 0.1
-  }
-
-  if (timestamp - lastReadCheck > 250) {
-    updateScrollReadIndex()
-    lastReadCheck = timestamp
-  }
-
-  animationId = requestAnimationFrame(animate)
-}
-
 function startAnimation() {
   if (animationId) return
   animationId = requestAnimationFrame(animate)
@@ -182,8 +164,12 @@ watch(() => props.text, () => {
 })
 
 watch(() => props.isPlaying, (playing) => {
+  console.log('[Display] isPlaying changed to:', playing, 'animationId:', !!animationId)
   if (playing) {
-    if (!animationId) startAnimation()
+    if (!animationId) {
+      startAnimation()
+      console.log('[Display] animation restarted')
+    }
   }
 })
 

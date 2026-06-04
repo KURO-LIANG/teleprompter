@@ -96,6 +96,7 @@ ws.onSync((data) => {
     greenText.value = data.greenText || false
     if (data.isPlaying !== undefined) {
       isPlaying.value = data.isPlaying
+      console.log('[onSync] isPlaying:', data.isPlaying)
     }
     if (data.scripts) {
       scripts.value = data.scripts
@@ -110,10 +111,12 @@ ws.onSync((data) => {
 })
 
 ws.onPlay((playing) => {
+  console.log('[onPlay] received:', playing, 'role:', ws.role.value, 'mode:', mode.value)
   if (ws.role.value !== 'master') {
     isPlaying.value = playing
     if (playing && mode.value !== 'prompting') {
       mode.value = 'prompting'
+      console.log('[onPlay] slave mode → prompting')
     }
   }
 })
