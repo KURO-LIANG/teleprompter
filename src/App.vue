@@ -12,15 +12,23 @@
         :roomCode="ws.roomCode.value"
         :slaveUrl="ws.slaveUrl.value"
         :highlightStyle="highlightStyle"
-        @update:text="onTextChange"
+        :scripts="scripts"
+        :activeScriptId="activeScriptId"
+        :modalVisible="modalVisible"
+        :editingScript="editingScript"
         @update:fontSize="fontSize = $event"
         @update:speed="speed = $event"
         @update:isMirrored="isMirrored = $event"
         @update:greenText="greenText = $event"
-        @start="startPrompting"
         @claim="ws.claimMaster()"
         @requestSync="ws.requestState()"
         @update:highlightStyle="highlightStyle = $event"
+        @addScript="addScript"
+        @editScript="editScript"
+        @deleteScript="deleteScript"
+        @startScript="startScript"
+        @saveScript="saveScript"
+        @closeModal="modalVisible = false"
       />
     </div>
 
@@ -66,9 +74,16 @@ const greenText = ref(false)
 const mode = ref('edit')
 const countdown = ref(0)
 const highlightStyle = ref('green')
+const scripts = ref([])
+const activeScriptId = ref(null)
+const modalVisible = ref(false)
+const editingScript = ref(null)
 const displayRef = ref(null)
-let textSyncTimer = null
 let countdownTimer = null
+
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
+}
 
 const ws = useWebSocket()
 
@@ -81,6 +96,19 @@ ws.onSync((data) => {
     greenText.value = data.greenText || false
     if (data.isPlaying !== undefined) {
       isPlaying.value = data.isPlaying
+    }
+    if (data.scripts) {
+      scripts.value = data.scripts
+    }
+    if (data.activeScriptId !== undefined) {
+      activeScriptId.value = data.activeScriptId
+    }
+    if (data.isPlaying && mode.value !== 'prompting') {
+      mode.value = 'prompting'
+    }
+    if (!data.isPlaying && mode.value === 'prompting') {
+      mode.value = 'edit'
+      isPlaying.value = false
     }
   }
 })
@@ -109,51 +137,71 @@ function syncState() {
       speed: speed.value,
       isPlaying: isPlaying.value,
       isMirrored: isMirrored.value,
-      greenText: greenText.value
+      greenText: greenText.value,
+      scripts: scripts.value,
+      activeScriptId: activeScriptId.value
     })
   }
 }
 
-function tokenizeText(value) {
-  const tokens = []
-  let i = 0
-  while (i < value.length) {
-    const ch = value[i]
-    if (ch === '\n') {
-      tokens.push({ text: '\n', clean: '', br: true })
-      i++
-    } else if (/[\u4e00-\u9fff]/.test(ch)) {
-      tokens.push({ text: ch, clean: ch, br: false })
-      i++
-    } else if (/\s/.test(ch)) {
-      let ws = ''
-      while (i < value.length && /\s/.test(value[i]) && value[i] !== '\n') {
-        ws += value[i]
-        i++
-      }
-      tokens.push({ text: ws, clean: '', br: false })
-    } else {
-      let word = ''
-      while (i < value.length && !/\s/.test(value[i]) && !/[\u4e00-\u9fff]/.test(value[i])) {
-        word += value[i]
-        i++
-      }
-      if (!word) { word = value[i]; i++ }
-      const clean = word.replace(/[^\w\u4e00-\u9fff]/g, '').toLowerCase()
-      tokens.push({ text: word, clean, br: false })
-    }
+function broadcastScripts() {
+  if (ws.role.value === 'master' && ws.isConnected.value) {
+    ws.sendSync({
+      fontSize: fontSize.value,
+      speed: speed.value,
+      isPlaying: isPlaying.value,
+      isMirrored: isMirrored.value,
+      greenText: greenText.value,
+      scripts: scripts.value,
+      activeScriptId: activeScriptId.value,
+      text: text.value
+    })
   }
-  return tokens
 }
 
-const tokens = computed(() => tokenizeText(text.value))
+function addScript() {
+  editingScript.value = null
+  modalVisible.value = true
+}
 
-function onTextChange(val) {
-  text.value = val
-  clearTimeout(textSyncTimer)
-  textSyncTimer = setTimeout(() => {
-    if (ws.role.value === 'master') syncState()
-  }, 150)
+function editScript(id) {
+  editingScript.value = scripts.value.find(s => s.id === id) || null
+  modalVisible.value = true
+}
+
+function deleteScript(id) {
+  scripts.value = scripts.value.filter(s => s.id !== id)
+  if (activeScriptId.value === id) {
+    activeScriptId.value = null
+    text.value = ''
+  }
+  broadcastScripts()
+}
+
+function saveScript({ id, title, text: scriptText }) {
+  if (id) {
+    const script = scripts.value.find(s => s.id === id)
+    if (script) {
+      script.title = title
+      script.text = scriptText
+    }
+  } else {
+    scripts.value.push({
+      id: generateId(),
+      title,
+      text: scriptText
+    })
+  }
+  broadcastScripts()
+}
+
+function startScript(id) {
+  const script = scripts.value.find(s => s.id === id)
+  if (!script) return
+  activeScriptId.value = id
+  text.value = script.text
+  broadcastScripts()
+  startPrompting()
 }
 
 watch([fontSize, speed, isMirrored, greenText], () => {

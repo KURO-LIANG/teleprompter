@@ -11,17 +11,22 @@
     </div>
 
     <div class="panel-body">
-      <div class="control-group">
-        <label class="control-label">提词文本</label>
-        <textarea
-          class="text-input"
-          :value="text"
-          :disabled="!isMaster && isConnected"
-          :placeholder="isMaster || !isConnected ? '在此输入或粘贴提词文本...' : '等待主控端同步文本...'"
-          rows="8"
-          @input="$emit('update:text', $event.target.value)"
-        ></textarea>
-      </div>
+      <ScriptList
+        :scripts="scripts"
+        :activeScriptId="activeScriptId"
+        :isMaster="isMaster"
+        @add="$emit('addScript')"
+        @edit="$emit('editScript', $event)"
+        @delete="$emit('deleteScript', $event)"
+        @start="$emit('startScript', $event)"
+      />
+
+      <ScriptModal
+        :visible="modalVisible"
+        :script="editingScript"
+        @save="$emit('saveScript', $event)"
+        @close="$emit('closeModal')"
+      />
 
       <div class="control-group">
         <div class="label-row">
@@ -95,15 +100,6 @@
         <div class="room-url">{{ slaveUrl }}</div>
       </div>
 
-      <div class="control-actions">
-        <button
-          class="btn btn-start"
-          @click="$emit('start')"
-        >
-          开始提词
-        </button>
-      </div>
-
       <div v-if="isConnected && !isMaster" class="claim-section">
         <button class="btn btn-claim" @click="$emit('requestSync')">
           请求同步
@@ -117,6 +113,9 @@
 </template>
 
 <script setup>
+import ScriptList from './ScriptList.vue'
+import ScriptModal from './ScriptModal.vue'
+
 defineProps({
   text: { type: String, default: '' },
   fontSize: { type: Number, default: 64 },
@@ -127,10 +126,13 @@ defineProps({
   isMaster: { type: Boolean, default: true },
   roomCode: { type: String, default: '' },
   slaveUrl: { type: String, default: '' },
-  highlightStyle: { type: String, default: 'green' }
+  scripts: { type: Array, default: () => [] },
+  activeScriptId: { type: String, default: null },
+  modalVisible: { type: Boolean, default: false },
+  editingScript: { type: Object, default: null }
 })
 
-defineEmits(['update:text', 'update:fontSize', 'update:speed', 'update:isMirrored', 'update:greenText', 'start', 'claim', 'requestSync', 'update:highlightStyle'])
+defineEmits(['update:text', 'update:fontSize', 'update:speed', 'update:isMirrored', 'update:greenText', 'start', 'claim', 'requestSync', 'update:highlightStyle', 'addScript', 'editScript', 'deleteScript', 'startScript', 'saveScript', 'closeModal'])
 </script>
 
 <style scoped>
