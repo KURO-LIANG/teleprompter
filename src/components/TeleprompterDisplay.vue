@@ -66,6 +66,11 @@ const debugVisible = ref(false)
 const scrollReadIndex = ref(0)
 const scrollPercent = ref(0)
 const isUserInteracting = ref(false)
+
+const effectiveReadIndex = computed(() => {
+  return Math.max(scrollReadIndex.value, props.readIndex || 0)
+})
+
 let clickCount = 0
 let clickTimer = null
 let lastReadCheck = 0
