@@ -155,6 +155,41 @@ function broadcastScripts() {
   }
 }
 
+function tokenizeText(value) {
+  const tokens = []
+  let i = 0
+  while (i < value.length) {
+    const ch = value[i]
+    if (ch === '\n') {
+      tokens.push({ text: '\n', clean: '', br: true })
+      i++
+    } else if (/[\u4e00-\u9fff]/.test(ch)) {
+      tokens.push({ text: ch, clean: ch, br: false })
+      i++
+    } else if (/\s/.test(ch)) {
+      let ws = ''
+      while (i < value.length && /\s/.test(value[i]) && value[i] !== '\n') {
+        ws += value[i]
+        i++
+      }
+      tokens.push({ text: ws, clean: '', br: false })
+    } else {
+      let word = ''
+      while (i < value.length && !/\s/.test(value[i]) && !/[\u4e00-\u9fff]/.test(value[i])) {
+        word += value[i]
+        i++
+      }
+      if (!word) { word = value[i]; i++ }
+      const clean = word.replace(/[^\w\u4e00-\u9fff]/g, '').toLowerCase()
+      tokens.push({ text: word, clean, br: false })
+    }
+  }
+  console.log('[tokenizeText] input:', value.slice(0, 30), 'tokens:', tokens.length)
+  return tokens
+}
+
+const tokens = computed(() => tokenizeText(text.value))
+
 function addScript() {
   editingScript.value = null
   modalVisible.value = true
@@ -193,9 +228,11 @@ function saveScript({ id, title, text: scriptText }) {
 
 function startScript(id) {
   const script = scripts.value.find(s => s.id === id)
+  console.log('[startScript] id:', id, 'found:', !!script, 'textLen:', script?.text?.length)
   if (!script) return
   activeScriptId.value = id
   text.value = script.text
+  console.log('[startScript] text.value set, length:', text.value.length)
   startPrompting()
   if (ws.role.value === 'master' && ws.isConnected.value) {
     syncState()
