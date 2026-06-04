@@ -197,9 +197,12 @@ function startScript(id) {
   activeScriptId.value = id
   text.value = script.text
   startPrompting()
+  if (ws.role.value === 'master' && ws.isConnected.value) {
+    syncState()
+  }
 }
 
-watch([fontSize, speed, isMirrored, greenText], () => {
+watch([fontSize, speed, isMirrored, greenText, text], () => {
   if (ws.role.value === 'master') syncState()
 })
 
