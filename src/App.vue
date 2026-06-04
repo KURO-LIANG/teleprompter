@@ -106,10 +106,6 @@ ws.onSync((data) => {
     if (data.isPlaying && mode.value !== 'prompting') {
       mode.value = 'prompting'
     }
-    if (!data.isPlaying && mode.value === 'prompting') {
-      mode.value = 'edit'
-      isPlaying.value = false
-    }
   }
 })
 
@@ -200,7 +196,6 @@ function startScript(id) {
   if (!script) return
   activeScriptId.value = id
   text.value = script.text
-  broadcastScripts()
   startPrompting()
 }
 
