@@ -181,6 +181,12 @@ watch(() => props.text, () => {
   resetScroll()
 })
 
+watch(() => props.isPlaying, (playing) => {
+  if (playing) {
+    if (!animationId) startAnimation()
+  }
+})
+
 onMounted(() => {
   startAnimation()
 })
