@@ -50,11 +50,17 @@ export function useWebSocket() {
   function getWsUrl() {
     const host = window.location.hostname
     const isLocal = host === 'localhost' || host === '127.0.0.1'
-    const base = isLocal
-      ? 'ws://localhost:3000'
-      : (window.location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + window.location.host
     const device = window.innerWidth < 768 ? 'mobile' : 'desktop'
-    return `${base}?room=${roomCode.value}&device=${device}`
+
+    if (isLocal) {
+      return `ws://localhost:3000?room=${roomCode.value}&device=${device}`
+    }
+
+    if (window.location.protocol === 'https:') {
+      return `wss://${host}?room=${roomCode.value}&device=${device}`
+    }
+
+    return `ws://${host}:3000?room=${roomCode.value}&device=${device}`
   }
 
   function connect() {
