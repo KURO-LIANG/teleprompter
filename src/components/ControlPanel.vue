@@ -129,7 +129,8 @@ defineProps({
   scripts: { type: Array, default: () => [] },
   activeScriptId: { type: String, default: null },
   modalVisible: { type: Boolean, default: false },
-  editingScript: { type: Object, default: null }
+  editingScript: { type: Object, default: null },
+  highlightStyle: { type: String, default: 'green' }
 })
 
 defineEmits(['update:text', 'update:fontSize', 'update:speed', 'update:isMirrored', 'update:greenText', 'start', 'claim', 'requestSync', 'update:highlightStyle', 'addScript', 'editScript', 'deleteScript', 'startScript', 'saveScript', 'closeModal'])
