@@ -112,6 +112,9 @@ ws.onSync((data) => {
 ws.onPlay((playing) => {
   if (ws.role.value !== 'master') {
     isPlaying.value = playing
+    if (playing && mode.value !== 'prompting') {
+      mode.value = 'prompting'
+    }
   }
 })
 
