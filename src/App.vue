@@ -96,7 +96,6 @@ ws.onSync((data) => {
     greenText.value = data.greenText || false
     if (data.isPlaying !== undefined) {
       isPlaying.value = data.isPlaying
-      console.log('[onSync] isPlaying:', data.isPlaying)
     }
     if (data.scripts) {
       scripts.value = data.scripts
@@ -111,12 +110,27 @@ ws.onSync((data) => {
 })
 
 ws.onPlay((playing) => {
-  console.log('[onPlay] received:', playing, 'role:', ws.role.value, 'mode:', mode.value)
   if (ws.role.value !== 'master') {
-    isPlaying.value = playing
-    if (playing && mode.value !== 'prompting') {
+    if (playing) {
       mode.value = 'prompting'
-      console.log('[onPlay] slave mode → prompting')
+      isPlaying.value = false
+      nextTick(() => {
+        displayRef.value?.resetScroll()
+      })
+      countdownTimer = setInterval(() => {
+        countdown.value--
+        if (countdown.value <= 0) {
+          clearInterval(countdownTimer)
+          countdownTimer = null
+          isPlaying.value = true
+        }
+      }, 1000)
+      countdown.value = 3
+    } else {
+      if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null }
+      countdown.value = 0
+      isPlaying.value = false
+      mode.value = 'edit'
     }
   }
 })
@@ -190,7 +204,6 @@ function tokenizeText(value) {
       tokens.push({ text: word, clean, br: false })
     }
   }
-  console.log('[tokenizeText] input:', value.slice(0, 30), 'tokens:', tokens.length)
   return tokens
 }
 
@@ -234,11 +247,9 @@ function saveScript({ id, title, text: scriptText }) {
 
 function startScript(id) {
   const script = scripts.value.find(s => s.id === id)
-  console.log('[startScript] id:', id, 'found:', !!script, 'textLen:', script?.text?.length)
   if (!script) return
   activeScriptId.value = id
   text.value = script.text
-  console.log('[startScript] text.value set, length:', text.value.length)
   startPrompting()
   if (ws.role.value === 'master' && ws.isConnected.value) {
     syncState()

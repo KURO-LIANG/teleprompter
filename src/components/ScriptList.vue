@@ -21,7 +21,7 @@
           <span v-if="isMaster" class="card-menu-btn" @click.stop="toggleMenu(script.id)">⋮</span>
         </div>
         <div class="card-preview">{{ script.text }}</div>
-        <div class="card-footer">
+        <div v-if="isMaster" class="card-footer">
           <button class="btn-start-script" @click.stop="$emit('start', script.id)">
             <svg viewBox="0 0 24 24" class="btn-icon"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
             立即提词

@@ -73,7 +73,6 @@ let interactionTimer = null
 let isDragging = false
 let dragStartY = 0
 let dragStartScroll = 0
-let debugLogTimer = 0
 
 function animate(timestamp) {
   if (!containerRef.value) {
@@ -85,10 +84,12 @@ function animate(timestamp) {
     containerRef.value.scrollTop += props.speed * 0.1
   }
 
-  if (timestamp - debugLogTimer > 2000) {
-    console.log('[animate] isPlaying:', props.isPlaying, 'scrollTop:', Math.round(containerRef.value.scrollTop), 'isUserInteracting:', isUserInteracting.value)
-    debugLogTimer = timestamp
+  if (timestamp - lastReadCheck > 250) {
+    updateScrollReadIndex()
+    lastReadCheck = timestamp
   }
+
+  animationId = requestAnimationFrame(animate)
 }
 
 function onPointerDown(e) {
@@ -164,11 +165,9 @@ watch(() => props.text, () => {
 })
 
 watch(() => props.isPlaying, (playing) => {
-  console.log('[Display] isPlaying changed to:', playing, 'animationId:', !!animationId)
   if (playing) {
     if (!animationId) {
       startAnimation()
-      console.log('[Display] animation restarted')
     }
   }
 })
