@@ -5,7 +5,7 @@
       <button v-if="isMaster" class="btn-add-script" @click="$emit('add')">+ 添加文案</button>
     </div>
 
-    <div class="list-body">
+    <div class="list-body" @click="menuOpenId = null">
       <div v-if="scripts.length === 0" class="empty-hint">
         {{ isMaster ? '点击上方按钮添加第一条提词文案' : '等待主控端添加文案...' }}
       </div>
