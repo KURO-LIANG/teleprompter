@@ -111,27 +111,7 @@ ws.onSync((data) => {
 
 ws.onPlay((playing) => {
   if (ws.role.value !== 'master') {
-    if (playing) {
-      mode.value = 'prompting'
-      isPlaying.value = false
-      nextTick(() => {
-        displayRef.value?.resetScroll()
-      })
-      countdownTimer = setInterval(() => {
-        countdown.value--
-        if (countdown.value <= 0) {
-          clearInterval(countdownTimer)
-          countdownTimer = null
-          isPlaying.value = true
-        }
-      }, 1000)
-      countdown.value = 3
-    } else {
-      if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null }
-      countdown.value = 0
-      isPlaying.value = false
-      mode.value = 'edit'
-    }
+    isPlaying.value = playing
   }
 })
 
