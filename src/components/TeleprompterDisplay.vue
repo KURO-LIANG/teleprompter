@@ -11,7 +11,7 @@
     @pointerleave="onPointerUp"
     @wheel.stop.prevent="onWheel"
   >
-    <div class="teleprompter-content" :style="{ transform: 'translateY(-' + scrollOffset + 'px)' }">
+    <div ref="contentRef" class="teleprompter-content" :style="{ transform: 'translateY(-' + scrollOffset + 'px)' }">
       <div class="teleprompter-text">
         <template v-for="(token, i) in tokens" :key="i">
           <br v-if="token.br" />
@@ -71,6 +71,7 @@ const props = defineProps({
 })
 
 const containerRef = ref(null)
+const contentRef = ref(null)
 let animationId = null
 
 const countdownActive = computed(() => props.countdown > 0)
@@ -85,10 +86,10 @@ const effectiveReadIndex = computed(() => {
   return Math.max(scrollReadIndex.value, props.readIndex || 0)
 })
 
-const scrollH = computed(() => containerRef.value?.scrollHeight || 0)
+const scrollH = computed(() => contentRef.value?.offsetHeight || 0)
 const clientH = computed(() => containerRef.value?.clientHeight || 0)
-const canScroll = computed(() => scrollH.value > clientH.value)
 const maxOffset = computed(() => Math.max(scrollH.value - clientH.value, 0))
+const canScroll = computed(() => maxOffset.value > 0)
 
 let clickCount = 0
 let clickTimer = null
