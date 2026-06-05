@@ -9,9 +9,9 @@
     @pointermove="onPointerMove"
     @pointerup="onPointerUp"
     @pointerleave="onPointerUp"
-    @wheel.passive="onWheel"
+    @wheel.stop.prevent="onWheel"
   >
-    <div class="teleprompter-content">
+    <div class="teleprompter-content" :style="{ transform: 'translateY(-' + scrollOffset + 'px)' }">
       <div class="teleprompter-text">
         <template v-for="(token, i) in tokens" :key="i">
           <br v-if="token.br" />
@@ -39,8 +39,8 @@
     </div>
     <div v-if="isPlaying" class="diag-panel" @click.stop>
       <div class="debug-row">
-        <span class="debug-label">帧数</span>
-        <span class="debug-value">{{ frameCount }}</span>
+        <span class="debug-label">帧/偏移</span>
+        <span class="debug-value">{{ frameCount }} / {{ scrollOffset }}</span>
       </div>
       <div class="debug-row">
         <span class="debug-label">可滚</span>
@@ -70,8 +70,6 @@ const props = defineProps({
   highlightStyle: { type: String, default: 'green' }
 })
 
-const emit = defineEmits([])
-
 const containerRef = ref(null)
 let animationId = null
 
@@ -81,14 +79,16 @@ const scrollReadIndex = ref(0)
 const scrollPercent = ref(0)
 const isUserInteracting = ref(false)
 const frameCount = ref(0)
-
-const scrollH = computed(() => containerRef.value?.scrollHeight || 0)
-const clientH = computed(() => containerRef.value?.clientHeight || 0)
-const canScroll = computed(() => scrollH.value > clientH.value)
+const scrollOffset = ref(0)
 
 const effectiveReadIndex = computed(() => {
   return Math.max(scrollReadIndex.value, props.readIndex || 0)
 })
+
+const scrollH = computed(() => containerRef.value?.scrollHeight || 0)
+const clientH = computed(() => containerRef.value?.clientHeight || 0)
+const canScroll = computed(() => scrollH.value > clientH.value)
+const maxOffset = computed(() => Math.max(scrollH.value - clientH.value, 0))
 
 let clickCount = 0
 let clickTimer = null
@@ -100,7 +100,6 @@ let dragStartScroll = 0
 
 function onClick() {
   if (countdownActive.value) return
-
   clickCount++
   if (clickCount >= 3) {
     clickCount = 0
@@ -118,7 +117,7 @@ function animate(timestamp) {
   }
 
   if (props.isPlaying && !isUserInteracting.value) {
-    containerRef.value.scrollBy(0, props.speed * 0.1)
+    scrollOffset.value = Math.min(scrollOffset.value + props.speed * 0.1, maxOffset.value)
   }
 
   frameCount.value++
@@ -131,11 +130,19 @@ function animate(timestamp) {
   animationId = requestAnimationFrame(animate)
 }
 
+function updateScrollReadIndex() {
+  const max = maxOffset.value
+  if (max <= 0) return
+  const pct = Math.min(scrollOffset.value / max, 1)
+  scrollPercent.value = Math.round(pct * 100)
+  scrollReadIndex.value = Math.floor(pct * props.tokens.length)
+}
+
 function onPointerDown(e) {
   isUserInteracting.value = true
-  if (e.pointerType === 'mouse' && containerRef.value) {
+  if (containerRef.value) {
     dragStartY = e.clientY
-    dragStartScroll = containerRef.value.scrollTop
+    dragStartScroll = scrollOffset.value
     isDragging = true
     containerRef.value.setPointerCapture(e.pointerId)
   }
@@ -144,7 +151,7 @@ function onPointerDown(e) {
 function onPointerMove(e) {
   if (!isDragging) return
   const delta = dragStartY - e.clientY
-  containerRef.value.scrollTop = dragStartScroll + delta
+  scrollOffset.value = Math.max(0, Math.min(dragStartScroll + delta, maxOffset.value))
 }
 
 function onPointerUp() {
@@ -152,8 +159,9 @@ function onPointerUp() {
   isDragging = false
 }
 
-function onWheel() {
+function onWheel(e) {
   isUserInteracting.value = true
+  scrollOffset.value = Math.max(0, Math.min(scrollOffset.value + e.deltaY, maxOffset.value))
   clearTimeout(interactionTimer)
   interactionTimer = setTimeout(() => {
     isUserInteracting.value = false
@@ -169,16 +177,6 @@ function tokenClass(i) {
   return 'word-unread'
 }
 
-function updateScrollReadIndex() {
-  if (!containerRef.value) return
-  const el = containerRef.value
-  const maxScroll = el.scrollHeight - el.clientHeight
-  if (maxScroll <= 0) return
-  const pct = Math.min(el.scrollTop / maxScroll, 1)
-  scrollPercent.value = Math.round(pct * 100)
-  scrollReadIndex.value = Math.floor(pct * props.tokens.length)
-}
-
 function startAnimation() {
   if (animationId) return
   animationId = requestAnimationFrame(animate)
@@ -192,11 +190,9 @@ function stopAnimation() {
 }
 
 function resetScroll() {
-  if (containerRef.value) {
-    containerRef.value.scrollTop = 0
-    scrollReadIndex.value = 0
-    scrollPercent.value = 0
-  }
+  scrollOffset.value = 0
+  scrollReadIndex.value = 0
+  scrollPercent.value = 0
 }
 
 watch(() => props.text, () => {
@@ -228,17 +224,10 @@ defineExpose({ resetScroll, scrollReadIndex })
   height: 100%;
   background: #0a0a0a;
   color: #e8e8e8;
-  overflow-y: scroll;
-  -webkit-overflow-scrolling: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  overflow: hidden;
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
-}
-
-.teleprompter-display::-webkit-scrollbar {
-  display: none;
 }
 
 .teleprompter-display.mirrored {
@@ -255,6 +244,7 @@ defineExpose({ resetScroll, scrollReadIndex })
   min-height: 100%;
   word-wrap: break-word;
   overflow-wrap: break-word;
+  will-change: transform;
 }
 
 .teleprompter-text {
