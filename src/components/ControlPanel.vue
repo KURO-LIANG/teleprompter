@@ -108,6 +108,11 @@
         </div>
       </div>
 
+      <div v-if="isConnected && !isMaster" class="room-info">
+        <label class="control-label">当前房间</label>
+        <div class="room-code">{{ roomCode }}</div>
+      </div>
+
       <div v-if="isConnected && !isMaster" class="claim-section">
         <button class="btn btn-claim" @click="$emit('requestSync')">
           请求同步
