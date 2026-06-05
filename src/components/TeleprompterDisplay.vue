@@ -79,6 +79,19 @@ let isDragging = false
 let dragStartY = 0
 let dragStartScroll = 0
 
+function onClick() {
+  if (countdownActive.value) return
+
+  clickCount++
+  if (clickCount >= 3) {
+    clickCount = 0
+    debugVisible.value = !debugVisible.value
+  } else {
+    clearTimeout(clickTimer)
+    clickTimer = setTimeout(() => { clickCount = 0 }, 500)
+  }
+}
+
 function animate(timestamp) {
   if (!containerRef.value) {
     animationId = requestAnimationFrame(animate)
