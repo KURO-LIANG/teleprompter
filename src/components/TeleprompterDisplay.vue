@@ -86,7 +86,7 @@ function animate(timestamp) {
   }
 
   if (props.isPlaying && !isUserInteracting.value) {
-    containerRef.value.scrollTop += props.speed * 0.1
+    containerRef.value.scrollBy(0, props.speed * 0.1)
   }
 
   if (timestamp - lastReadCheck > 250) {
@@ -195,6 +195,7 @@ defineExpose({ resetScroll, scrollReadIndex })
   background: #0a0a0a;
   color: #e8e8e8;
   overflow-y: scroll;
+  -webkit-overflow-scrolling: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
   cursor: pointer;
