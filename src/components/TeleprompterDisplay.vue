@@ -37,6 +37,20 @@
         <span class="debug-value">{{ scrollReadIndex }} / {{ tokens.length }}</span>
       </div>
     </div>
+    <div v-if="isPlaying" class="diag-panel" @click.stop>
+      <div class="debug-row">
+        <span class="debug-label">帧数</span>
+        <span class="debug-value">{{ frameCount }}</span>
+      </div>
+      <div class="debug-row">
+        <span class="debug-label">可滚</span>
+        <span class="debug-value" :class="{ error: !canScroll }">{{ scrollH }} &gt; {{ clientH }}</span>
+      </div>
+      <div class="debug-row">
+        <span class="debug-label">播放/交互</span>
+        <span class="debug-value">{{ isPlaying ? '▶' : '⏸' }} / {{ isUserInteracting ? '✋' : '✓' }}</span>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -66,6 +80,11 @@ const debugVisible = ref(false)
 const scrollReadIndex = ref(0)
 const scrollPercent = ref(0)
 const isUserInteracting = ref(false)
+const frameCount = ref(0)
+
+const scrollH = computed(() => containerRef.value?.scrollHeight || 0)
+const clientH = computed(() => containerRef.value?.clientHeight || 0)
+const canScroll = computed(() => scrollH.value > clientH.value)
 
 const effectiveReadIndex = computed(() => {
   return Math.max(scrollReadIndex.value, props.readIndex || 0)
@@ -101,6 +120,8 @@ function animate(timestamp) {
   if (props.isPlaying && !isUserInteracting.value) {
     containerRef.value.scrollBy(0, props.speed * 0.1)
   }
+
+  frameCount.value++
 
   if (timestamp - lastReadCheck > 250) {
     updateScrollReadIndex()
@@ -362,6 +383,23 @@ defineExpose({ resetScroll, scrollReadIndex })
 
 .debug-value.error {
   color: #f87171;
+}
+
+.diag-panel {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(234, 179, 8, 0.5);
+  border-radius: 8px;
+  padding: 8px 12px;
+  z-index: 50;
+  font-size: 11px;
+  line-height: 1.8;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 160px;
 }
 
 @media (max-width: 767px) {
