@@ -1,6 +1,6 @@
 <template>
   <div class="app-root" :class="{ 'mode-prompting': mode === 'prompting' }">
-    <div v-show="mode === 'edit' || isDesktop" class="sidebar">
+    <div v-show="mode === 'edit'" class="sidebar">
       <ControlPanel
         :text="text"
         :fontSize="fontSize"
@@ -310,8 +310,6 @@ function exitFullscreen() {
 function togglePlay() {
   isPlaying.value = !isPlaying.value
 }
-
-const isDesktop = computed(() => window.innerWidth >= 1024)
 </script>
 
 <style>

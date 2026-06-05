@@ -37,20 +37,6 @@
         <span class="debug-value">{{ scrollReadIndex }} / {{ tokens.length }}</span>
       </div>
     </div>
-    <!--<div v-if="isPlaying" class="diag-panel" @click.stop>-->
-    <!--  <div class="debug-row">-->
-    <!--    <span class="debug-label">帧/偏移</span>-->
-    <!--    <span class="debug-value">{{ frameCount }} / {{ scrollOffset }}</span>-->
-    <!--  </div>-->
-    <!--  <div class="debug-row">-->
-    <!--    <span class="debug-label">可滚</span>-->
-    <!--    <span class="debug-value" :class="{ error: !canScroll }">{{ scrollH }} &gt; {{ clientH }}</span>-->
-    <!--  </div>-->
-    <!--  <div class="debug-row">-->
-    <!--    <span class="debug-label">播放/交互</span>-->
-    <!--    <span class="debug-value">{{ isPlaying ? '▶' : '⏸' }} / {{ isUserInteracting ? '✋' : '✓' }}</span>-->
-    <!--  </div>-->
-    <!--</div>-->
   </div>
 </template>
 
