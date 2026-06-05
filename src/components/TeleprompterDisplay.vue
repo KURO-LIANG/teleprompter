@@ -41,7 +41,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted, computed, nextTick } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 
 const props = defineProps({
   text: { type: String, default: '' },
@@ -191,7 +191,6 @@ function resetScroll() {
 
 watch(() => props.text, () => {
   resetScroll()
-  nextTick(() => { layoutVersion.value++ })
 })
 
 watch(() => props.isPlaying, (playing) => {
@@ -201,13 +200,24 @@ watch(() => props.isPlaying, (playing) => {
   }
 })
 
+let resizeObserver = null
+
 onMounted(() => {
   startAnimation()
-  nextTick(() => { layoutVersion.value++ })
+  if (contentRef.value) {
+    resizeObserver = new ResizeObserver(() => {
+      layoutVersion.value++
+    })
+    resizeObserver.observe(contentRef.value)
+  }
 })
 
 onUnmounted(() => {
   stopAnimation()
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+    resizeObserver = null
+  }
 })
 
 defineExpose({ resetScroll, scrollReadIndex })
