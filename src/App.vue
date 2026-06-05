@@ -29,6 +29,7 @@
         @startScript="startScript"
         @saveScript="saveScript"
         @closeModal="modalVisible = false"
+        @joinRoom="ws.joinRoom($event)"
       />
     </div>
 

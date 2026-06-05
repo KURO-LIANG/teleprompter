@@ -97,7 +97,15 @@
         <label class="control-label">房间码</label>
         <div class="room-code">{{ roomCode }}</div>
         <label class="control-label" style="margin-top:6px">从显端访问地址</label>
-        <div class="room-url">{{ slaveUrl }}</div>
+        <div class="room-url" :class="{ copied }" @click="copyUrl">{{ copied ? '复制成功' : slaveUrl }}</div>
+      </div>
+
+      <div v-if="isConnected" class="join-section">
+        <label class="control-label">加入房间</label>
+        <div class="join-row">
+          <input v-model="joinCode" type="number" class="join-input" placeholder="输入4位房间号" @keyup.enter="doJoin" />
+          <button class="btn btn-join" @click="doJoin">加入</button>
+        </div>
       </div>
 
       <div v-if="isConnected && !isMaster" class="claim-section">
@@ -113,10 +121,11 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import ScriptList from './ScriptList.vue'
 import ScriptModal from './ScriptModal.vue'
 
-defineProps({
+const props = defineProps({
   text: { type: String, default: '' },
   fontSize: { type: Number, default: 64 },
   speed: { type: Number, default: 5 },
@@ -133,7 +142,26 @@ defineProps({
   highlightStyle: { type: String, default: 'green' }
 })
 
-defineEmits(['update:text', 'update:fontSize', 'update:speed', 'update:isMirrored', 'update:greenText', 'start', 'claim', 'requestSync', 'update:highlightStyle', 'addScript', 'editScript', 'deleteScript', 'startScript', 'saveScript', 'closeModal'])
+const emit = defineEmits(['update:text', 'update:fontSize', 'update:speed', 'update:isMirrored', 'update:greenText', 'start', 'claim', 'requestSync', 'update:highlightStyle', 'addScript', 'editScript', 'deleteScript', 'startScript', 'saveScript', 'closeModal', 'joinRoom'])
+
+const copied = ref(false)
+const joinCode = ref('')
+let copyTimer = null
+
+function copyUrl() {
+  navigator.clipboard.writeText(props.slaveUrl).then(() => {
+    copied.value = true
+    clearTimeout(copyTimer)
+    copyTimer = setTimeout(() => { copied.value = false }, 1500)
+  }).catch(() => {})
+}
+
+function doJoin() {
+  const code = String(joinCode.value).trim()
+  if (!code) return
+  emit('joinRoom', code)
+  joinCode.value = ''
+}
 </script>
 
 <style scoped>
@@ -357,6 +385,74 @@ defineEmits(['update:text', 'update:fontSize', 'update:speed', 'update:isMirrore
   color: #999;
   word-break: break-all;
   margin-top: 4px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.room-url:hover {
+  color: #ccc;
+}
+
+.room-url.copied {
+  color: #4ade80;
+  cursor: default;
+}
+
+.join-section {
+  padding: 12px 14px;
+  background: rgba(74, 158, 255, 0.04);
+  border: 1px solid rgba(74, 158, 255, 0.12);
+  border-radius: 8px;
+}
+
+.join-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.join-input {
+  flex: 1;
+  padding: 8px 12px;
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 8px;
+  color: #e0e0e0;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield;
+}
+
+.join-input::-webkit-outer-spin-button,
+.join-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.join-input:focus {
+  outline: none;
+  border-color: #4a9eff;
+}
+
+.join-input::placeholder {
+  color: #555;
+}
+
+.btn-join {
+  padding: 8px 16px;
+  background: #4a9eff;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.btn-join:hover {
+  background: #3a8eef;
 }
 
 .style-selector {

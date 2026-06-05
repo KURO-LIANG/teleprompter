@@ -149,11 +149,26 @@ export function useWebSocket() {
     send({ type: 'requestState' })
   }
 
+  function joinRoom(code) {
+    if (!/^\d{4}$/.test(code)) return false
+    clearTimeout(reconnectTimer)
+    roomCode.value = code
+    disconnect()
+    const url = new URL(window.location.href)
+    url.searchParams.set('room', code)
+    history.replaceState(null, '', url.toString())
+    role.value = ''
+    reconnectAttempts = 0
+    connect()
+    return true
+  }
+
   function disconnect() {
     clearTimeout(reconnectTimer)
     if (ws) {
       ws.onclose = null
       ws.close()
+      ws = null
     }
   }
 
@@ -175,6 +190,7 @@ export function useWebSocket() {
     sendPlay,
     claimMaster,
     requestState,
+    joinRoom,
     onSync: (fn) => { _callbacks.sync = fn },
     onPlay: (fn) => { _callbacks.play = fn },
     onRoleChange: (fn) => { _callbacks.roleChange = fn },
