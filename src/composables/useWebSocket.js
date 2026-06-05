@@ -102,6 +102,7 @@ export function useWebSocket() {
             _callbacks.masterDisconnected?.()
             break
           case 'masterChanged':
+            role.value = 'slave'
             _callbacks.masterDisconnected?.()
             break
           case 'syncRequest':

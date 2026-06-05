@@ -124,8 +124,10 @@ wss.on('connection', (ws, req) => {
       switch (msg.type) {
         case 'claimMaster':
           if (!room.master || room.master.readyState !== 1) {
+            const oldMaster = room.master
             room.master = ws
             sendTo(ws, { type: 'role', role: 'master' })
+            sendTo(oldMaster, { type: 'role', role: 'slave' })
             roomBroadcast(room, { type: 'masterChanged' }, ws)
           } else {
             sendTo(ws, { type: 'role', role: 'slave' })

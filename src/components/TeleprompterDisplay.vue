@@ -37,25 +37,25 @@
         <span class="debug-value">{{ scrollReadIndex }} / {{ tokens.length }}</span>
       </div>
     </div>
-    <div v-if="isPlaying" class="diag-panel" @click.stop>
-      <div class="debug-row">
-        <span class="debug-label">帧/偏移</span>
-        <span class="debug-value">{{ frameCount }} / {{ scrollOffset }}</span>
-      </div>
-      <div class="debug-row">
-        <span class="debug-label">可滚</span>
-        <span class="debug-value" :class="{ error: !canScroll }">{{ scrollH }} &gt; {{ clientH }}</span>
-      </div>
-      <div class="debug-row">
-        <span class="debug-label">播放/交互</span>
-        <span class="debug-value">{{ isPlaying ? '▶' : '⏸' }} / {{ isUserInteracting ? '✋' : '✓' }}</span>
-      </div>
-    </div>
+    <!--<div v-if="isPlaying" class="diag-panel" @click.stop>-->
+    <!--  <div class="debug-row">-->
+    <!--    <span class="debug-label">帧/偏移</span>-->
+    <!--    <span class="debug-value">{{ frameCount }} / {{ scrollOffset }}</span>-->
+    <!--  </div>-->
+    <!--  <div class="debug-row">-->
+    <!--    <span class="debug-label">可滚</span>-->
+    <!--    <span class="debug-value" :class="{ error: !canScroll }">{{ scrollH }} &gt; {{ clientH }}</span>-->
+    <!--  </div>-->
+    <!--  <div class="debug-row">-->
+    <!--    <span class="debug-label">播放/交互</span>-->
+    <!--    <span class="debug-value">{{ isPlaying ? '▶' : '⏸' }} / {{ isUserInteracting ? '✋' : '✓' }}</span>-->
+    <!--  </div>-->
+    <!--</div>-->
   </div>
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed, nextTick } from 'vue'
 
 const props = defineProps({
   text: { type: String, default: '' },
@@ -81,13 +81,20 @@ const scrollPercent = ref(0)
 const isUserInteracting = ref(false)
 const frameCount = ref(0)
 const scrollOffset = ref(0)
+const layoutVersion = ref(0)
 
 const effectiveReadIndex = computed(() => {
   return Math.max(scrollReadIndex.value, props.readIndex || 0)
 })
 
-const scrollH = computed(() => contentRef.value?.offsetHeight || 0)
-const clientH = computed(() => containerRef.value?.clientHeight || 0)
+const scrollH = computed(() => {
+  void layoutVersion.value
+  return contentRef.value?.offsetHeight || 0
+})
+const clientH = computed(() => {
+  void layoutVersion.value
+  return containerRef.value?.clientHeight || 0
+})
 const maxOffset = computed(() => Math.max(scrollH.value - clientH.value, 0))
 const canScroll = computed(() => maxOffset.value > 0)
 
@@ -198,6 +205,7 @@ function resetScroll() {
 
 watch(() => props.text, () => {
   resetScroll()
+  nextTick(() => { layoutVersion.value++ })
 })
 
 watch(() => props.isPlaying, (playing) => {
@@ -209,6 +217,7 @@ watch(() => props.isPlaying, (playing) => {
 
 onMounted(() => {
   startAnimation()
+  nextTick(() => { layoutVersion.value++ })
 })
 
 onUnmounted(() => {
