@@ -171,9 +171,8 @@ watch(() => props.text, () => {
 
 watch(() => props.isPlaying, (playing) => {
   if (playing) {
-    if (!animationId) {
-      startAnimation()
-    }
+    stopAnimation()
+    startAnimation()
   }
 })
 
